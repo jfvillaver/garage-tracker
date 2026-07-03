@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Garage Tracker</title>
+<style>
+  :root{
+    --paper: #EDE6D6;
+    --card: #FAF7F0;
+    --ink: #2B2A28;
+    --ink-soft: #6B6555;
+    --tape: #D95829;
+    --tape-ink: #FAF7F0;
+    --rule: #C9BFA8;
+    --green: #3A5A40;
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    background: var(--paper);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 20px 18px 60px;
+  }
+
+  header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    margin-bottom: 22px;
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 10px;
+  }
+
+  h1 {
+    font-family: "Courier New", Courier, monospace;
+    font-weight: 700;
+    letter-spacing: 1px;
+    font-size: 1.35rem;
+    margin: 0;
+    text-transform: uppercase;
+  }
+
+  .rev {
+    font-family: "Courier New", Courier, monospace;
+    font-size: 0.7rem;
+    color: var(--ink-soft);
+  }
+
+  .tag-label {
+    display: inline-block;
+    background: var(--tape);
+    color: var(--tape-ink);
+    font-family: "Courier New", Courier, monospace;
+    font-weight: 700;
+    font-size: 0.68rem;
+    letter-spacing: 1.5px;
+    padding: 3px 8px;
+    border-radius: 2px;
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  section.card {
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 6px;
+    padding: 16px;
+    margin-bottom: 18px;
+    box-shadow: 0 1px 0 var(--rule);
+  }
+
+  .field { margin-bottom: 12px; }
+
+  input[type="text"] {
+    width: 100%;
+    font-size: 1rem;
+    padding: 10px 12px;
+    border: 1.5px solid var(--rule);
+    border-radius: 4px;
+    background: white;
+    color: var(--ink);
+    font-family: inherit;
+  }
+  input[type="text"]:focus {
+    outline: none;
+    border-color: var(--tape);
+  }
+
+  button {
+    width: 100%;
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    padding: 12px;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-family: "Courier New", Courier, monospace;
+  }
+
+  .btn-primary { background: var(--ink); color: var(--card); }
+  .btn-primary:active { background: var(--tape); }
+
+  .btn-secondary { background: var(--green); color: var(--card); }
+  .btn-secondary:active { opacity: 0.85; }
+
+  .status {
+    font-size: 0.85rem;
+    margin-top: 8px;
+    min-height: 1.1em;
+  }
+  .status.ok { color: var(--green); }
+  .status.err { color: var(--tape); }
+
+  .results { margin-top: 4px; }
+
+  .result-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px dashed var(--rule);
+  }
+  .result-row:last-child { border-bottom: none; }
+
+  .box-chip {
+    background: var(--ink);
+    color: var(--card);
+    font-family: "Courier New", Courier, monospace;
+    font-size: 0.85rem;
+    font-weight: 700;
+    padding: 5px 10px;
+    border-radius: 3px;
+    white-space: nowrap;
+  }
+
+  .result-meta {
+    font-size: 0.78rem;
+    color: var(--ink-soft);
+  }
+
+  .empty {
+    color: var(--ink-soft);
+    font-size: 0.9rem;
+    font-style: italic;
+    padding: 6px 0;
+  }
+
+  .divider {
+    text-align: center;
+    color: var(--ink-soft);
+    font-family: "Courier New", Courier, monospace;
+    font-size: 0.75rem;
+    letter-spacing: 2px;
+    margin: 24px 0 10px;
+  }
+
+  .setup-warning {
+    background: #FBE8D8;
+    border: 1px solid var(--tape);
+    color: var(--ink);
+    padding: 10px 12px;
+    border-radius: 4px;
+    font-size: 0.82rem;
+    margin-bottom: 16px;
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>Garage Tracker</h1>
+    <span class="rev">v1</span>
+  </header>
+
+  <div id="setupWarning" class="setup-warning" style="display:none;">
+    Set your Apps Script URL in the <code>APP_SCRIPT_URL</code> constant near the top of the script section before this will work.
+  </div>
+
+  <!-- BOX VIEW (shown automatically when the page is opened with ?box=NAME, e.g. from a QR code) -->
+  <section class="card" id="boxViewCard" style="display:none;">
+    <div class="tag-label" id="boxViewLabel">Box contents</div>
+    <div id="boxViewStatus" class="status"></div>
+    <div id="boxViewResults" class="results"></div>
+  </section>
+
+  <!-- SEARCH -->
+  <section class="card">
+    <div class="tag-label">Find an item</div>
+    <div class="field">
+      <input type="text" id="searchInput" placeholder="e.g. axe" autocomplete="off">
+    </div>
+    <button class="btn-primary" id="searchBtn">Where is it?</button>
+    <div id="searchStatus" class="status"></div>
+    <div id="searchResults" class="results"></div>
+  </section>
+
+  <div class="divider">— · —</div>
+
+  <!-- ADD -->
+  <section class="card">
+    <div class="tag-label">Add an item</div>
+    <div class="field">
+      <input type="text" id="itemInput" placeholder="Item (e.g. axe)" autocomplete="off">
+    </div>
+    <div class="field">
+      <input type="text" id="boxInput" placeholder="Box (e.g. camping box)" autocomplete="off">
+    </div>
+    <div class="field">
+      <input type="text" id="notesInput" placeholder="Notes (optional)" autocomplete="off">
+    </div>
+    <button class="btn-secondary" id="addBtn">Add to inventory</button>
+    <div id="addStatus" class="status"></div>
+  </section>
+
+  <div class="divider">— · —</div>
+
+  <!-- BROWSE ALL -->
+  <section class="card">
+    <div class="tag-label">Everything stored</div>
+    <button class="btn-primary" id="listBtn">Show full inventory</button>
+    <div id="listStatus" class="status"></div>
+    <div id="listResults" class="results"></div>
+  </section>
+
+</div>
+
+<script>
+  // ---- CONFIGURE THIS ----
+  // Paste the /exec URL you get after deploying the Apps Script web app.
+  const APP_SCRIPT_URL = 'PASTE_YOUR_DEPLOYMENT_URL_HERE';
+  // -------------------------
+
+  if (!APP_SCRIPT_URL || APP_SCRIPT_URL.indexOf('PASTE_YOUR') !== -1) {
+    document.getElementById('setupWarning').style.display = 'block';
+  }
+
+  // ---- AUTO-LOAD FROM QR CODE / URL PARAM ----
+  // If the page is opened as index.html?box=Camping, immediately fetch
+  // and show everything filed under the "Camping" box.
+  async function loadBoxFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const boxName = params.get('box');
+    if (!boxName) return;
+
+    const card = document.getElementById('boxViewCard');
+    const label = document.getElementById('boxViewLabel');
+    const statusEl = document.getElementById('boxViewStatus');
+    const resultsEl = document.getElementById('boxViewResults');
+
+    card.style.display = 'block';
+    label.textContent = boxName + ' box';
+    setStatus(statusEl, 'Loading…');
+
+    try {
+      const url = APP_SCRIPT_URL + '?action=box&box=' + encodeURIComponent(boxName);
+      const res = await fetch(url);
+      const data = await res.json();
+      setStatus(statusEl, '', '');
+      renderRows(resultsEl, data.results, 'Nothing logged in "' + boxName + '" yet.');
+    } catch (err) {
+      setStatus(statusEl, 'Could not reach the sheet. Check the deployment URL.', 'err');
+    }
+  }
+
+  loadBoxFromUrl();
+
+  function renderRows(container, results, emptyMsg) {
+    container.innerHTML = '';
+    if (!results || results.length === 0) {
+      container.innerHTML = '<div class="empty">' + emptyMsg + '</div>';
+      return;
+    }
+    results.forEach(r => {
+      const row = document.createElement('div');
+      row.className = 'result-row';
+      const dateStr = r.date ? new Date(r.date).toLocaleDateString() : '';
+      row.innerHTML =
+        '<span class="box-chip">' + escapeHtml(r.box) + '</span>' +
+        '<div><div>' + escapeHtml(r.item) + '</div>' +
+        '<div class="result-meta">' + (dateStr ? 'Added ' + dateStr : '') +
+        (r.notes ? ' · ' + escapeHtml(r.notes) : '') + '</div></div>';
+      container.appendChild(row);
+    });
+  }
+
+  function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str == null ? '' : String(str);
+    return div.innerHTML;
+  }
+
+  function setStatus(el, msg, kind) {
+    el.textContent = msg;
+    el.className = 'status' + (kind ? ' ' + kind : '');
+  }
+
+  // ---- SEARCH ----
+  document.getElementById('searchBtn').addEventListener('click', async () => {
+    const query = document.getElementById('searchInput').value.trim();
+    const statusEl = document.getElementById('searchStatus');
+    const resultsEl = document.getElementById('searchResults');
+    if (!query) {
+      setStatus(statusEl, 'Type an item name to search.', 'err');
+      return;
+    }
+    setStatus(statusEl, 'Searching…');
+    resultsEl.innerHTML = '';
+    try {
+      const url = APP_SCRIPT_URL + '?action=search&item=' + encodeURIComponent(query);
+      const res = await fetch(url);
+      const data = await res.json();
+      setStatus(statusEl, '', '');
+      renderRows(resultsEl, data.results, 'No matches for "' + query + '".');
+    } catch (err) {
+      setStatus(statusEl, 'Could not reach the sheet. Check the deployment URL.', 'err');
+    }
+  });
+
+  // ---- ADD ----
+  document.getElementById('addBtn').addEventListener('click', async () => {
+    const item = document.getElementById('itemInput').value.trim();
+    const box = document.getElementById('boxInput').value.trim();
+    const notes = document.getElementById('notesInput').value.trim();
+    const statusEl = document.getElementById('addStatus');
+
+    if (!item || !box) {
+      setStatus(statusEl, 'Item and box are both required.', 'err');
+      return;
+    }
+    setStatus(statusEl, 'Saving…');
+    try {
+      const res = await fetch(APP_SCRIPT_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'text/plain' }, // avoids CORS preflight with Apps Script
+        body: JSON.stringify({ item, box, notes })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setStatus(statusEl, 'Added "' + item + '" to ' + box + '.', 'ok');
+        document.getElementById('itemInput').value = '';
+        document.getElementById('boxInput').value = '';
+        document.getElementById('notesInput').value = '';
+      } else {
+        setStatus(statusEl, data.error || 'Something went wrong.', 'err');
+      }
+    } catch (err) {
+      setStatus(statusEl, 'Could not reach the sheet. Check the deployment URL.', 'err');
+    }
+  });
+
+  // ---- LIST ALL ----
+  document.getElementById('listBtn').addEventListener('click', async () => {
+    const statusEl = document.getElementById('listStatus');
+    const resultsEl = document.getElementById('listResults');
+    setStatus(statusEl, 'Loading…');
+    resultsEl.innerHTML = '';
+    try {
+      const res = await fetch(APP_SCRIPT_URL + '?action=list');
+      const data = await res.json();
+      setStatus(statusEl, '', '');
+      renderRows(resultsEl, data.results, 'Nothing stored yet.');
+    } catch (err) {
+      setStatus(statusEl, 'Could not reach the sheet. Check the deployment URL.', 'err');
+    }
+  });
+</script>
+</body>
+</html>
